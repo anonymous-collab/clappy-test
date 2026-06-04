@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clappy - Movie Bot</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/clappy.css" />
+  <link rel="stylesheet" href="css/chat.css" />
+</head>
+
+<body>
+
+  <!-- Test background so we can see Clappy clearly -->
+  <div id="test-bg">
+    <h1>🎬 Clappy Test Environment</h1>
+    <p>Tap Clappy to open the chat</p>
+  </div>
+
+  <!-- Clappy lives here -->
+  <div id="clappy-root">
+
+    <!-- Speech bubble -->
+    <div id="clappy-bubble">Hey! Tap me 🎬</div>
+
+    <!-- The character -->
+    <div id="clappy-char">
+      <!-- SVG is injected by clappy.js -->
+    </div>
+
+  </div>
+
+  <!-- Scripts — ORDER MATTERS -->
+  <script src="js/ai.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/clappy.js"></script>
+
+</body>
+</html>
