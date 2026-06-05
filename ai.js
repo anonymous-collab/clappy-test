@@ -177,11 +177,17 @@ async function callProxy(messages) {
   try {
     console.log('Calling proxy...');
 
-    const res = await fetch(PROXY_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ messages })
-    });
+    const controller = new AbortController();
+const timeout    = setTimeout(() => controller.abort(), 60000);
+
+const res = await fetch(PROXY_URL, {
+  method:  'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body:    JSON.stringify({ messages }),
+  signal:  controller.signal
+});
+
+clearTimeout(timeout);
 
     console.log('Proxy status:', res.status);
     const data = await res.json();
