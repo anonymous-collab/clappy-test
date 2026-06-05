@@ -181,13 +181,14 @@ async function callAI(messages) {
     const res = await fetch(OR_URL, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${OPENROUTER_KEY}`,
-        'HTTP-Referer':  'https://anonymous-collab.github.io',
-        'X-Title':       'Clappy Movie Bot'
-      },
+  'Content-Type':  'application/json',
+  'Authorization': `Bearer ${OPENROUTER_KEY}`,
+  'HTTP-Referer':  'https://anonymous-collab.github.io/clappy-test',
+  'X-Title':       'Clappy',
+  'Origin':        'https://anonymous-collab.github.io'
+},
       body: JSON.stringify({
-        model:       'meta-llama/llama-3-8b-instruct:free',
+        model: 'meta-llama/llama-3-8b-instruct:free',
         max_tokens:  400,
         temperature: 0.82,
         messages:    messages
