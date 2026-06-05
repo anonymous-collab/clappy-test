@@ -76,7 +76,7 @@ function toggleChat(open) {
     // Show welcome message if first time
     if (chatMessages.children.length === 0) {
       setTimeout(() => {
-        addClappyMessage("Hey there! 🎬 I'm Clappy, your personal movie guide! What are we watching today?");
+        addClappyMessage("Hey there! 🎬 I'm Clappy, your personal movie guide! First response might take 30 seconds while I warm up — totally normal! What are we watching today?");
       }, 300);
     }
     chatInput.focus();
