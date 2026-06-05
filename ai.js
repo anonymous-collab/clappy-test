@@ -1,12 +1,11 @@
 /* ============================================
-   CLAPPY - AI Brain v5
-   TMDb + OpenRouter (Llama 3) + Wikipedia
+   CLAPPY - AI Brain v6
+   Now using proxy server — CORS solved! 🎬
    ============================================ */
 
-const TMDB_KEY       = window._TMDB_KEY   || '';
-const OPENROUTER_KEY = window._AI_KEY     || '';
-const TMDB_URL       = 'https://api.themoviedb.org/3';
-const OR_URL         = 'https://openrouter.ai/api/v1/chat/completions';
+const TMDB_KEY   = window._TMDB_KEY || '';
+const PROXY_URL  = 'https://clappy-proxy.onrender.com/chat';
+const TMDB_URL   = 'https://api.themoviedb.org/3';
 
 let chatHistory = [];
 
@@ -21,7 +20,7 @@ Personality rules:
   * Sad → be gentle, suggest comfort movies
   * Excited → match their energy
   * Just saying hi → greet them back warmly and ask what they want to watch
-- For greetings like "hey", "hi", "hello" — just greet back naturally and ask what kind of movie they are in the mood for
+- For greetings like hey hi hello — just greet back naturally and ask what kind of movie they are in the mood for
 - When recommending movies format each one like:
   🎬 Title (Year) ⭐ Rating/10
   One punchy sentence about why they will love it
@@ -121,13 +120,13 @@ function getIntent(msg) {
 
   if (/^(hey|hi|hello|sup|yo|hiya|howdy|good morning|good evening|good afternoon|what's up|wazzup)/.test(m))
     return 'greeting';
-  if (/trending|popular|hot right now|most watched|everyone watching/.test(m))
+  if (/trending|popular|hot right now|most watched/.test(m))
     return 'trending';
-  if (/top rated|best movie|greatest|highest grossing|all time|best ever/.test(m))
+  if (/top rated|best movie|greatest|highest grossing|all time/.test(m))
     return 'toprated';
-  if (/upcoming|coming soon|this month|this year|new release|releasing/.test(m))
+  if (/upcoming|coming soon|this month|this year|new release/.test(m))
     return 'upcoming';
-  if (/recommend|suggest|what should i watch|what to watch|help me pick|bored|don.t know what/.test(m))
+  if (/recommend|suggest|what should i watch|what to watch|bored/.test(m))
     return 'recommend';
   if (/comedy|funny|laugh|hilarious/.test(m))        return 'genre_comedy';
   if (/horror|scary|frightening/.test(m))            return 'genre_horror';
@@ -171,45 +170,32 @@ async function getMovieData(intent, message) {
 }
 
 // ============================================
-// CALL OPENROUTER
+// CALL PROXY
 // ============================================
 
-async function callAI(messages) {
+async function callProxy(messages) {
   try {
-    console.log('Calling OpenRouter...');
+    console.log('Calling proxy...');
 
-    const res = await fetch(OR_URL, {
-      method: 'POST',
-      headers: {
-  'Content-Type':  'application/json',
-  'Authorization': `Bearer ${OPENROUTER_KEY}`,
-  'HTTP-Referer':  'https://anonymous-collab.github.io/clappy-test',
-  'X-Title':       'Clappy',
-  'Origin':        'https://anonymous-collab.github.io'
-},
-      body: JSON.stringify({
-        model: 'meta-llama/llama-3-8b-instruct:free',
-        max_tokens:  400,
-        temperature: 0.82,
-        messages:    messages
-      })
+    const res = await fetch(PROXY_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ messages })
     });
 
-    console.log('OpenRouter status:', res.status);
-    const raw  = await res.text();
-    console.log('OpenRouter raw:', raw.slice(0, 400));
-
-    const data = JSON.parse(raw);
+    console.log('Proxy status:', res.status);
+    const data = await res.json();
+    console.log('Proxy response:', data);
 
     if (data.error) {
-      console.error('OpenRouter error:', data.error.message);
+      console.error('Proxy error:', data.error);
       return null;
     }
 
-    return data?.choices?.[0]?.message?.content || null;
+    return data.reply || null;
 
   } catch (err) {
-    console.error('OpenRouter failed:', err.message);
+    console.error('Proxy call failed:', err.message);
     return null;
   }
 }
@@ -250,7 +236,7 @@ async function askClappy(userMessage) {
     if (wikiInfo) context += wikiInfo;
 
     const fullMessage = context
-      ? `${userMessage}\n\n[USE THIS DATA NATURALLY — speak like a friend, not a database:${context}]`
+      ? `${userMessage}\n\n[USE THIS DATA NATURALLY — speak like a friend not a database:${context}]`
       : userMessage;
 
     chatHistory.push({ role: 'user', content: fullMessage });
@@ -264,14 +250,13 @@ async function askClappy(userMessage) {
       ...chatHistory
     ];
 
-    const reply = await callAI(messages);
+    const reply = await callProxy(messages);
 
     if (reply) {
       chatHistory.push({ role: 'assistant', content: reply });
       return reply;
     }
 
-    // AI failed — human sounding TMDb fallback
     if (movies.length > 0) {
       const top3 = movies.slice(0, 3);
       let fallback = `Okay so I've got some picks for you! 🎬\n\n`;
@@ -291,4 +276,4 @@ async function askClappy(userMessage) {
     console.error('askClappy crashed:', err);
     return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
   }
-     }
+       }
