@@ -1,11 +1,11 @@
 /* ============================================
-   CLAPPY - AI Brain v6
-   Now using proxy server — CORS solved! 🎬
+   CLAPPY - AI Brain v7
+   Full 10 movie results + all patches
    ============================================ */
 
-const TMDB_KEY   = window._TMDB_KEY || '';
-const PROXY_URL  = 'https://clappy-proxy.onrender.com/chat';
-const TMDB_URL   = 'https://api.themoviedb.org/3';
+const TMDB_KEY  = window._TMDB_KEY || '';
+const PROXY_URL = 'https://clappy-proxy.onrender.com/chat';
+const TMDB_URL  = 'https://api.themoviedb.org/3';
 
 let chatHistory = [];
 
@@ -28,9 +28,11 @@ Personality rules:
 - Never say "Here's what I found" — you are not a search engine
 - Never say "I don't see" or "I can't find" or "the list doesn't have" — always work with what you have confidently
 - Never dump raw data — wrap everything in personality
-- Keep replies under 180 words
+- If asked for a top 10 list — you MUST give exactly 10 movies using the data provided, numbered 1 through 10
+- If asked for top 5 — give exactly 5
+- Always match the exact number the user asks for
+- Keep replies under 300 words when listing movies
 - Always end with a question to keep conversation going
-- If asked for a top 10 list — give all 10 using the data provided
 - If someone asks about a specific movie you don't have data for — use your own knowledge confidently`;
 
 // ============================================
@@ -49,15 +51,18 @@ async function tmdbFetch(endpoint) {
 }
 
 async function getTrending() {
-  return await tmdbFetch(`/trending/movie/week?api_key=${TMDB_KEY}`);
+  const results = await tmdbFetch(`/trending/movie/week?api_key=${TMDB_KEY}`);
+  return results.slice(0, 10);
 }
 
 async function getTopRated() {
-  return await tmdbFetch(`/movie/top_rated?api_key=${TMDB_KEY}`);
+  const results = await tmdbFetch(`/movie/top_rated?api_key=${TMDB_KEY}`);
+  return results.slice(0, 10);
 }
 
 async function getUpcoming() {
-  return await tmdbFetch(`/movie/upcoming?api_key=${TMDB_KEY}`);
+  const results = await tmdbFetch(`/movie/upcoming?api_key=${TMDB_KEY}`);
+  return results.slice(0, 10);
 }
 
 async function searchMovies(query) {
@@ -66,16 +71,17 @@ async function searchMovies(query) {
       `${TMDB_URL}/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&language=en-US`
     );
     const data = await res.json();
-    return data?.results || [];
+    return (data?.results || []).slice(0, 10);
   } catch {
     return [];
   }
 }
 
 async function getByGenre(genreId) {
-  return await tmdbFetch(
+  const results = await tmdbFetch(
     `/discover/movie?api_key=${TMDB_KEY}&with_genres=${genreId}&sort_by=popularity.desc`
   );
+  return results.slice(0, 10);
 }
 
 const GENRES = {
@@ -88,11 +94,11 @@ const GENRES = {
 
 function formatMovies(movies) {
   if (!movies || movies.length === 0) return '';
-  return movies.slice(0, 5).map(m => {
+  return movies.slice(0, 10).map((m, i) => {
     const year     = m.release_date ? m.release_date.slice(0, 4) : 'N/A';
     const rating   = m.vote_average ? m.vote_average.toFixed(1)  : 'N/A';
-    const overview = m.overview     ? m.overview.slice(0, 100) + '...' : '';
-    return `${m.title} (${year}) | Rating: ${rating}/10 | ${overview}`;
+    const overview = m.overview     ? m.overview.slice(0, 120) + '...' : '';
+    return `${i + 1}. ${m.title} (${year}) | Rating: ${rating}/10 | ${overview}`;
   }).join('\n');
 }
 
@@ -107,7 +113,7 @@ async function getWiki(query) {
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`
     );
     const data  = await res.json();
-    return data?.extract ? data.extract.slice(0, 400) : null;
+    return data?.extract ? data.extract.slice(0, 500) : null;
   } catch {
     return null;
   }
@@ -131,7 +137,7 @@ function getIntent(msg) {
   if (/recommend|suggest|what should i watch|what to watch|bored/.test(m))
     return 'recommend';
   if (/comedy|funny|laugh|hilarious/.test(m))        return 'genre_comedy';
-  if (/horror|scary|frightening/.test(m))            return 'genre_horror';
+  if (/horror|scary|frightening|terrifying/.test(m)) return 'genre_horror';
   if (/romance|romantic|love story/.test(m))         return 'genre_romance';
   if (/sci.fi|science fiction|space|futuristic/.test(m)) return 'genre_scifi';
   if (/action|fight|explosive/.test(m))              return 'genre_action';
@@ -180,20 +186,19 @@ async function callProxy(messages) {
     console.log('Calling proxy...');
 
     const controller = new AbortController();
-const timeout    = setTimeout(() => controller.abort(), 60000);
+    const timeout    = setTimeout(() => controller.abort(), 60000);
 
-const res = await fetch(PROXY_URL, {
-  method:  'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body:    JSON.stringify({ messages }),
-  signal:  controller.signal
-});
+    const res = await fetch(PROXY_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ messages }),
+      signal:  controller.signal
+    });
 
-clearTimeout(timeout);
+    clearTimeout(timeout);
 
     console.log('Proxy status:', res.status);
     const data = await res.json();
-    console.log('Proxy response:', data);
 
     if (data.error) {
       console.error('Proxy error:', data.error);
@@ -219,6 +224,23 @@ const FALLBACKS = [
 ];
 
 // ============================================
+// KEEP PROXY AWAKE
+// ============================================
+
+function keepProxyAwake() {
+  setInterval(async () => {
+    try {
+      await fetch('https://clappy-proxy.onrender.com');
+      console.log('Proxy ping sent ✅');
+    } catch (err) {
+      console.log('Ping failed:', err.message);
+    }
+  }, 840000);
+}
+
+keepProxyAwake();
+
+// ============================================
 // MAIN — askClappy
 // ============================================
 
@@ -239,12 +261,12 @@ async function askClappy(userMessage) {
 
     let context = '';
     if (movies.length > 0) {
-      context += `\nLive movie data from TMDb:\n${formatMovies(movies)}`;
+      context += `\nLive movie data from TMDb (${movies.length} movies):\n${formatMovies(movies)}`;
     }
     if (wikiInfo) context += wikiInfo;
 
     const fullMessage = context
-      ? `${userMessage}\n\n[USE THIS DATA NATURALLY — speak like a friend not a database:${context}]`
+      ? `${userMessage}\n\n[USE THIS DATA NATURALLY — speak like a friend not a database. You have ${movies.length} movies to work with:${context}]`
       : userMessage;
 
     chatHistory.push({ role: 'user', content: fullMessage });
